@@ -4,34 +4,25 @@
 
 GitHub stores code, reproducible configuration and tests. Secrets, recordings, model weights, Obsidian vault data and private runtime state stay on the machine.
 
-## Current milestone — v0.5
+## Current milestone — v0.6
 
 ```text
-          "Rupert"
-             │
-             ↓
-      openWakeWord ($0)
-             │
-       activation only
-             │
-             ├──────────────┐
-             ↓              │
-       microphone        keyboard
-             │              │
-             ↓              │
-      whisper.cpp ($0)      │
-             │              │
-             └──────┬───────┘
-                    ↓
-          deterministic router
-                    ↓
-            command executor
-             │              │
-             ↓              ↓
-       Obsidian REST     Piper TTS
-             │              │
-             ↓              ↓
-           vault         speakers
+          "Rupert" / keyboard
+                  │
+        ┌─────────┴──────────┐
+        │                    │
+ known local command    reasoning request
+        │                    │
+        ↓                    ↓
+ deterministic router    Ollama local
+        │                (text only)
+        ↓                    │
+ command executor            │
+   │          │              │
+   ↓          ↓              │
+Obsidian   Piper TTS ←───────┘
+
+Voice input: openWakeWord → microphone → whisper.cpp → same routing layer
 ```
 
 Simple commands do not use an LLM. The core target is **$0/month**.
@@ -51,7 +42,7 @@ Edit `.env` and set your local Obsidian REST API key. Never commit it.
 .\.venv\Scripts\rupert.exe shell
 ```
 
-Example commands:
+Example deterministic commands:
 
 ```text
 buscar Theo
@@ -104,8 +95,6 @@ Press ENTER to start recording and ENTER again to stop. To answer aloud:
 
 ## Local wake word — openWakeWord
 
-Install the optional wake-word layer:
-
 ```powershell
 .\scripts\setup-wakeword.ps1
 ```
@@ -116,25 +105,44 @@ The final activation phrase is **Rupert**, using a custom ONNX model stored outs
 .runtime/models/wakeword/rupert.onnx
 ```
 
-Diagnostics and one-shot monitoring:
-
 ```powershell
 .\.venv\Scripts\rupert.exe wake-doctor
 .\.venv\Scripts\rupert.exe wake-monitor
 ```
 
-For an initial smoke test before the custom model exists, the setup script can optionally download openWakeWord's upstream `hey_jarvis` model:
+See `docs/WAKEWORD.md` for custom-model training. Wake detection is activation, not authorization.
+
+## Optional local brain — Ollama
+
+Rupert can use Ollama for reasoning while keeping execution permissions separate.
+
+Rupert does **not** install Ollama or force a model download. Once Ollama is installed explicitly:
 
 ```powershell
-.\scripts\setup-wakeword.ps1 -DownloadSmokeModel
+.\scripts\setup-ollama.ps1
 ```
 
-See `docs/WAKEWORD.md` for custom-model training. v0.5 intentionally stops after wake-word detection; it does not yet auto-execute commands after an activation.
+After choosing a model:
+
+```powershell
+.\scripts\setup-ollama.ps1 -Model <model-name>
+```
+
+Set the same model in `.env`, then:
+
+```powershell
+.\.venv\Scripts\rupert.exe brain-doctor
+.\.venv\Scripts\rupert.exe ask "Dame tres alternativas para esta idea"
+```
+
+`ask` returns text only. The local model cannot directly execute Rupert skills or claim that an action was completed.
+
+See `docs/BRAIN.md` for the permission model.
 
 ## Cost / privacy policy
 
 Core target: **$0/month**. Paid APIs are never required by the core. Models, recordings, secrets and the Obsidian vault stay outside Git.
 
-LLMs are an optional future reasoning backend. Routine commands such as opening, reading, searching or appending notes should stay deterministic and local whenever possible.
+Routine commands such as opening, reading, searching or appending notes remain deterministic and local whenever possible. LLM reasoning is optional and does not replace the permission/executor layer.
 
-See `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, and `docs/WAKEWORD.md`.
+See `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/WAKEWORD.md`, and `docs/BRAIN.md`.

@@ -4,34 +4,31 @@
 
 GitHub stores code, reproducible configuration and tests. Secrets, recordings, model weights, Obsidian vault data and private runtime state stay on the machine.
 
-## Current milestone — v0.7
+## Current milestone — v0.8
 
 ```text
-              text / voice transcript
-                       │
-                       ↓
-              deterministic parser
-                 │             │
-            recognized       unknown
-                 │             │
-                 ↓             ↓
-             executor      Ollama local
-            │      │        text only
-            ↓      ↓            │
-        Obsidian  skills         │
-            │                    │
-            └────────────┬───────┘
-                         ↓
-                    Rupert reply
+text / voice transcript
+        │
+        ↓
+deterministic parser ── unknown ──→ Ollama local (text only)
+        │
+   known action
+        ↓
+ permission kernel
+   │          │
+ deny       allow
+              ↓
+           executor
+          │       │
+          ↓       ↓
+      Obsidian  future skills
 ```
 
-The rule is simple: **known commands stay deterministic; natural-language reasoning goes to the local brain.** LLM output never grants itself execution permission.
+The rule is simple: **reasoning is not authorization**. Every executable action passes through a centralized permission policy.
 
 The core target is **$0/month**.
 
 ## Bootstrap
-
-From PowerShell in the repository root:
 
 ```powershell
 .\scripts\bootstrap.ps1
@@ -63,19 +60,20 @@ Once the optional Ollama brain is configured:
 .\.venv\Scripts\rupert.exe chat
 ```
 
-Inside the same console:
+Known commands execute deterministically. Natural-language reasoning goes to Ollama and returns text only.
 
-```text
-buscar Theo
-```
+## Permission kernel
 
-runs locally without an LLM, while:
+Current policy distinguishes the source of an action (`keyboard`, `voice`, `brain`, `system`) and its risk (`read`, `write`, `destructive`).
 
-```text
-¿Cómo mejorarías esta idea de novela?
-```
+Examples:
 
-uses the local brain and returns text only.
+- voice may search/read/open notes and append text;
+- voice may **not** overwrite an entire note;
+- an LLM may propose actions but may **not** execute them;
+- destructive future actions require explicit confirmation.
+
+See `docs/PERMISSIONS.md`.
 
 ## Local speech-to-text — whisper.cpp
 
@@ -88,8 +86,6 @@ Optional NVIDIA CUDA build:
 ```powershell
 .\scripts\setup-whisper.ps1 -Cuda
 ```
-
-Then:
 
 ```powershell
 .\.venv\Scripts\rupert.exe voice-doctor
@@ -104,17 +100,12 @@ Then:
 .\.venv\Scripts\rupert.exe speak "Rupert está en línea."
 ```
 
-The default voice is Mexican Spanish (`es_MX-ald-medium`).
+Default voice: Mexican Spanish (`es_MX-ald-medium`).
 
 ## Push-to-talk
 
 ```powershell
 .\.venv\Scripts\rupert.exe talk
-```
-
-Press ENTER to start recording and ENTER again to stop. To answer aloud:
-
-```powershell
 .\.venv\Scripts\rupert.exe talk --speak
 ```
 
@@ -124,18 +115,14 @@ Press ENTER to start recording and ENTER again to stop. To answer aloud:
 .\scripts\setup-wakeword.ps1
 ```
 
-The final activation phrase is **Rupert**, using a custom ONNX model stored outside Git at:
-
-```text
-.runtime/models/wakeword/rupert.onnx
-```
+The final activation phrase is **Rupert**, using a custom ONNX model stored outside Git at `.runtime/models/wakeword/rupert.onnx`.
 
 ```powershell
 .\.venv\Scripts\rupert.exe wake-doctor
 .\.venv\Scripts\rupert.exe wake-monitor
 ```
 
-See `docs/WAKEWORD.md` for custom-model training. Wake detection is activation, not authorization.
+See `docs/WAKEWORD.md`. Wake detection is activation, not authorization.
 
 ## Optional local brain — Ollama
 
@@ -159,14 +146,12 @@ Set the same model in `.env`, then:
 .\.venv\Scripts\rupert.exe chat
 ```
 
-`ask` and the reasoning side of `chat` return text only. The local model cannot directly execute Rupert skills or claim that an action was completed.
-
-See `docs/BRAIN.md` for the permission model.
+See `docs/BRAIN.md`.
 
 ## Cost / privacy policy
 
 Core target: **$0/month**. Paid APIs are never required by the core. Models, recordings, secrets and the Obsidian vault stay outside Git.
 
-Routine commands such as opening, reading, searching or appending notes remain deterministic and local whenever possible. LLM reasoning is optional and does not replace the permission/executor layer.
+Routine commands remain deterministic whenever possible. LLM reasoning is optional and never replaces the permission/executor layer.
 
-See `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/WAKEWORD.md`, and `docs/BRAIN.md`.
+See `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/WAKEWORD.md`, `docs/BRAIN.md`, and `docs/PERMISSIONS.md`.

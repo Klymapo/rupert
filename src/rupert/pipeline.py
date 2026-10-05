@@ -7,7 +7,8 @@ from pathlib import Path
 from .audio import record_push_to_talk
 from .executor import ExecutionResult, execute_intent
 from .obsidian_bridge import ObsidianClient
-from .router import IntentKind, parse_intent
+from .permissions import ActionSource
+from .router import parse_intent
 from .tts import speak
 from .voice import transcribe_file
 
@@ -26,13 +27,7 @@ def default_audio_path() -> Path:
 def process_transcript(client: ObsidianClient, transcript: str) -> VoiceTurn:
     cleaned = transcript.strip()
     intent = parse_intent(cleaned)
-    if intent.kind == IntentKind.WRITE:
-        result = ExecutionResult(
-            False,
-            "Por voz no sobrescribo notas completas. Usa el teclado o una confirmación explícita.",
-        )
-    else:
-        result = execute_intent(client, intent)
+    result = execute_intent(client, intent, source=ActionSource.VOICE)
     return VoiceTurn(cleaned, result)
 
 

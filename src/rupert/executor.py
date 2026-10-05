@@ -4,6 +4,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from .obsidian_bridge import ObsidianClient
+from .permissions import (
+    DEFAULT_POLICY,
+    ActionSource,
+    PermissionPolicy,
+    action_spec_for_intent,
+)
 from .router import Intent, IntentKind, parse_intent
 
 
@@ -26,11 +32,25 @@ class ExecutionResult:
     should_exit: bool = False
 
 
-def execute_intent(client: ObsidianClient, intent: Intent) -> ExecutionResult:
+def execute_intent(
+    client: ObsidianClient,
+    intent: Intent,
+    *,
+    source: ActionSource = ActionSource.KEYBOARD,
+    confirmed: bool = False,
+    policy: PermissionPolicy = DEFAULT_POLICY,
+) -> ExecutionResult:
     if intent.kind == IntentKind.EXIT:
         return ExecutionResult(True, "Hasta luego.", should_exit=True)
     if intent.kind == IntentKind.HELP:
         return ExecutionResult(True, HELP_TEXT)
+
+    spec = action_spec_for_intent(intent.kind)
+    if spec is not None:
+        decision = policy.evaluate(spec, source=source, confirmed=confirmed)
+        if not decision.allowed:
+            return ExecutionResult(False, decision.reason)
+
     if intent.kind == IntentKind.SEARCH:
         payload = client.search(intent.target)
         count = len(payload) if isinstance(payload, list) else None
@@ -51,5 +71,18 @@ def execute_intent(client: ObsidianClient, intent: Intent) -> ExecutionResult:
     return ExecutionResult(False, "No entendí esa orden local.")
 
 
-def execute_text(client: ObsidianClient, text: str) -> ExecutionResult:
-    return execute_intent(client, parse_intent(text))
+def execute_text(
+    client: ObsidianClient,
+    text: str,
+    *,
+    source: ActionSource = ActionSource.KEYBOARD,
+    confirmed: bool = False,
+    policy: PermissionPolicy = DEFAULT_POLICY,
+) -> ExecutionResult:
+    return execute_intent(
+        client,
+        parse_intent(text),
+        source=source,
+        confirmed=confirmed,
+        policy=policy,
+    )

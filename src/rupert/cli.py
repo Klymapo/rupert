@@ -13,6 +13,13 @@ from .pipeline import process_audio_file, push_to_talk
 from .shell import run_shell
 from .tts import speak, tts_doctor
 from .voice import transcribe_file, voice_doctor
+from .wakeword import (
+    WakeWordConfig,
+    WakeWordDependencyError,
+    WakeWordDetector,
+    wait_for_activation,
+    wake_doctor,
+)
 
 
 def make_client() -> ObsidianClient:
@@ -60,6 +67,8 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("shell", help="Shell local de órdenes sin LLM")
     sub.add_parser("voice-doctor", help="Diagnóstico de whisper.cpp + modelo")
     sub.add_parser("tts-doctor", help="Diagnóstico de Piper + voz local")
+    sub.add_parser("wake-doctor", help="Diagnóstico de openWakeWord + modelo Rupert")
+    sub.add_parser("wake-monitor", help="Escucha hasta detectar una activación y se detiene")
 
     tr = sub.add_parser("transcribe", help="Transcribe un archivo de audio local con whisper.cpp")
     tr.add_argument("file")
@@ -96,6 +105,22 @@ def main() -> int:
         return voice_doctor()
     if args.command == "tts-doctor":
         return tts_doctor()
+    if args.command == "wake-doctor":
+        return wake_doctor()
+    if args.command == "wake-monitor":
+        try:
+            cfg = WakeWordConfig.from_env()
+            detector = WakeWordDetector(cfg)
+            print(f"👂 Escuchando wake word con umbral {cfg.threshold:.2f}. Ctrl+C cancela.")
+            score = wait_for_activation(detector)
+            print(f"✅ Wake word detectado. Score={score:.3f}")
+            return 0
+        except KeyboardInterrupt:
+            print("\nCancelado.")
+            return 130
+        except (FileNotFoundError, ValueError, WakeWordDependencyError, RuntimeError) as exc:
+            print(f"❌ {exc}")
+            return 1
     if args.command == "transcribe":
         try:
             print(transcribe_file(args.file, language=args.language))

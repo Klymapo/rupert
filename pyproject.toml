@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rupert"
+version = "0.3.0"
+description = "Local-first, low-cost personal assistant hub"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [{name = "Atatoriz"}]
+dependencies = []
+
+[project.scripts]
+rupert = "rupert.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

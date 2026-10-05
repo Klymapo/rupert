@@ -4,28 +4,34 @@
 
 GitHub stores code, reproducible configuration and tests. Secrets, recordings, model weights, Obsidian vault data and private runtime state stay on the machine.
 
-## Current milestone — v0.4
+## Current milestone — v0.5
 
 ```text
-Keyboard / microphone / local WAV
-              │
-              ↓
-        whisper.cpp ($0)
-              │
-              ↓
-        transcript text
-              │
-              ↓
- deterministic router ($0, no LLM)
-              │
-              ↓
-         command executor
-          │           │
-          ↓           ↓
-    Obsidian REST   Piper TTS
-          │           │
-          ↓           ↓
-       vault        speakers
+          "Rupert"
+             │
+             ↓
+      openWakeWord ($0)
+             │
+       activation only
+             │
+             ├──────────────┐
+             ↓              │
+       microphone        keyboard
+             │              │
+             ↓              │
+      whisper.cpp ($0)      │
+             │              │
+             └──────┬───────┘
+                    ↓
+          deterministic router
+                    ↓
+            command executor
+             │              │
+             ↓              ↓
+       Obsidian REST     Piper TTS
+             │              │
+             ↓              ↓
+           vault         speakers
 ```
 
 Simple commands do not use an LLM. The core target is **$0/month**.
@@ -57,8 +63,6 @@ salir
 
 ## Local speech-to-text — whisper.cpp
 
-Build the pinned whisper.cpp release and download the multilingual `base` model:
-
 ```powershell
 .\scripts\setup-whisper.ps1
 ```
@@ -78,44 +82,54 @@ Then:
 
 ## Local text-to-speech — Piper
 
-Install the optional local audio/TTS extras and download the default Mexican Spanish voice (`es_MX-ald-medium`):
-
 ```powershell
 .\scripts\setup-piper.ps1
-```
-
-Then:
-
-```powershell
 .\.venv\Scripts\rupert.exe tts-doctor
 .\.venv\Scripts\rupert.exe speak "Rupert está en línea."
 ```
 
-Piper is optional; Rupert's core remains dependency-light.
+The default voice is Mexican Spanish (`es_MX-ald-medium`).
 
 ## Push-to-talk
-
-After Whisper and the local audio extras are installed:
 
 ```powershell
 .\.venv\Scripts\rupert.exe talk
 ```
 
-Press ENTER to start recording and ENTER again to stop. Rupert transcribes the WAV locally and sends the transcript to the same deterministic command executor used by the keyboard shell.
-
-To make Rupert answer aloud:
+Press ENTER to start recording and ENTER again to stop. To answer aloud:
 
 ```powershell
 .\.venv\Scripts\rupert.exe talk --speak
 ```
 
-For testing the full command pipeline from an existing WAV without a microphone:
+## Local wake word — openWakeWord
+
+Install the optional wake-word layer:
 
 ```powershell
-.\.venv\Scripts\rupert.exe process-audio .\sample.wav --speak
+.\scripts\setup-wakeword.ps1
 ```
 
-No audio is uploaded by Rupert.
+The final activation phrase is **Rupert**, using a custom ONNX model stored outside Git at:
+
+```text
+.runtime/models/wakeword/rupert.onnx
+```
+
+Diagnostics and one-shot monitoring:
+
+```powershell
+.\.venv\Scripts\rupert.exe wake-doctor
+.\.venv\Scripts\rupert.exe wake-monitor
+```
+
+For an initial smoke test before the custom model exists, the setup script can optionally download openWakeWord's upstream `hey_jarvis` model:
+
+```powershell
+.\scripts\setup-wakeword.ps1 -DownloadSmokeModel
+```
+
+See `docs/WAKEWORD.md` for custom-model training. v0.5 intentionally stops after wake-word detection; it does not yet auto-execute commands after an activation.
 
 ## Cost / privacy policy
 
@@ -123,4 +137,4 @@ Core target: **$0/month**. Paid APIs are never required by the core. Models, rec
 
 LLMs are an optional future reasoning backend. Routine commands such as opening, reading, searching or appending notes should stay deterministic and local whenever possible.
 
-See `docs/ARCHITECTURE.md` and `docs/SECURITY.md`.
+See `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, and `docs/WAKEWORD.md`.

@@ -10,46 +10,43 @@ Rupert is local-first and low-cost. GitHub stores source code and reproducible c
 4. Audio input: optional `sounddevice` recorder.
 5. STT: `whisper.cpp`, fully local.
 6. TTS: optional Piper backend, fully local. Kokoro can be added later behind the same boundary.
-7. Brain adapters: optional local LLM or optional online reasoning backend.
+7. Brain: optional local Ollama reasoning backend, text-only in v0.6.
 8. Skills: Git/GitHub, Godot, Blender and other explicitly enabled tools.
 
-## v0.5 flow
+## v0.6 flow
 
 ```text
-                   microphone
-                       │
-                       ↓
-               openWakeWord (local)
-                       │
-               activation event only
-                       │
-             ┌─────────┴─────────┐
-             │                   │
-         push-to-talk         keyboard
-             │                   │
-             ↓                   │
-        whisper.cpp              │
-             │                   │
-             └─────────┬─────────┘
-                       ↓
-                   transcript
-                       ↓
-             deterministic router
-                       ↓
-             shared command executor
-                │              │
-                ↓              ↓
-          Obsidian REST     response text
-                │              │
-                ↓         optional Piper
-              vault             │
-                                ↓
-                             speakers
+microphone                                  keyboard
+    │                                          │
+openWakeWord                                   │
+    │                                          │
+whisper.cpp                                    │
+    │                                          │
+    └──────────────────────┬───────────────────┘
+                           ↓
+                      input text
+                           │
+             ┌─────────────┴─────────────┐
+             │                           │
+       known deterministic         reasoning request
+            intent                       │
+             │                           ↓
+             ↓                       Ollama local
+     permission/executor             text reply only
+        │          │                      │
+        ↓          ↓                      │
+  Obsidian REST  future skills            │
+        │                                 │
+        ↓                                 │
+      vault                         optional Piper
+                                          │
+                                          ↓
+                                       speakers
 ```
 
-The wake-word detector does not execute commands. In v0.5 it stops after one activation so false-positive behavior can be measured before automatic command capture is enabled.
+The local brain is **not** in the execution path. It may explain or propose an action, but it cannot directly invoke Rupert skills. Execution stays behind the deterministic parser, permission rules and executor.
 
-The executor is shared by keyboard and voice. Simple commands do not require an LLM.
+The wake-word detector is activation only, never authorization.
 
 ## Runtime directories
 
@@ -61,23 +58,36 @@ The executor is shared by keyboard and voice. Simple commands do not require an 
 - temporary microphone recordings;
 - generated TTS WAV files.
 
-## Future brain routing
+Ollama manages its own local model store outside this repository.
 
-A later brain adapter should only receive commands that the deterministic router cannot safely satisfy. The intended order is:
+## Reasoning routing
+
+Current v0.6 keeps reasoning explicit through `rupert ask`. A later milestone may route unknown text to a brain adapter for interpretation, but the brain must return a proposal rather than execute it.
+
+Target policy:
 
 ```text
-command
+request
   ↓
-local deterministic route available? ── yes → execute locally ($0)
+known deterministic route? ─────────────── yes → execute locally ($0)
   │
   no
   ↓
-local LLM suitable? ──────────────────── yes → local reasoning ($0 API)
-  │
-  no / user requests stronger reasoning
-  ↓
-optional online reasoning backend
+reasoning needed? ──────────────────────── yes → local Ollama ($0 API)
+  │                                                │
+  no                                               ↓
+  │                                           text/proposal
+  ↓                                                │
+answer/error                              permission validation
+                                                   │
+                                     explicit execution only if allowed
 ```
+
+## Network boundaries
+
+- Obsidian REST/MCP defaults to loopback.
+- Ollama defaults to `http://127.0.0.1:11434`.
+- Rupert rejects a non-loopback brain endpoint unless `RUPERT_ALLOW_REMOTE_BRAIN=1` is explicitly configured.
 
 ## Security boundaries
 
@@ -85,5 +95,6 @@ optional online reasoning backend
 - never commit `.env`, tokens, recordings, model weights or vault contents;
 - require explicit confirmation for destructive actions;
 - do not expose Obsidian REST/MCP directly to the public Internet;
-- treat transcripts as untrusted input before executing future system-level skills;
-- treat wake-word detection as activation only, never as authorization.
+- treat transcripts as untrusted input before executing system-level skills;
+- treat wake-word detection as activation only, never as authorization;
+- treat LLM output as untrusted advice/proposals, never as implicit permission to act.

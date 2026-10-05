@@ -7,6 +7,7 @@ import shutil
 import sys
 
 from . import __version__
+from .assistant import run_assistant_shell
 from .brain import BrainError, OllamaBackend, brain_doctor
 from .config import load_local_env
 from .obsidian_bridge import DEFAULT_BASE_URL, ObsidianClient, doctor as obsidian_doctor
@@ -66,6 +67,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="command", required=True)
     sub.add_parser("doctor", help="Diagnóstico local + Obsidian")
     sub.add_parser("shell", help="Shell local de órdenes sin LLM")
+    sub.add_parser("chat", help="Consola única: comandos locales + razonamiento Ollama")
     sub.add_parser("voice-doctor", help="Diagnóstico de whisper.cpp + modelo")
     sub.add_parser("tts-doctor", help="Diagnóstico de Piper + voz local")
     sub.add_parser("wake-doctor", help="Diagnóstico de openWakeWord + modelo Rupert")
@@ -106,6 +108,8 @@ def main() -> int:
         return local_doctor()
     if args.command == "shell":
         return run_shell(make_client())
+    if args.command == "chat":
+        return run_assistant_shell(make_client())
     if args.command == "voice-doctor":
         return voice_doctor()
     if args.command == "tts-doctor":

@@ -7,6 +7,7 @@ import shutil
 import sys
 
 from . import __version__
+from .brain import BrainError, OllamaBackend, brain_doctor
 from .config import load_local_env
 from .obsidian_bridge import DEFAULT_BASE_URL, ObsidianClient, doctor as obsidian_doctor
 from .pipeline import process_audio_file, push_to_talk
@@ -69,6 +70,10 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("tts-doctor", help="Diagnóstico de Piper + voz local")
     sub.add_parser("wake-doctor", help="Diagnóstico de openWakeWord + modelo Rupert")
     sub.add_parser("wake-monitor", help="Escucha hasta detectar una activación y se detiene")
+    sub.add_parser("brain-doctor", help="Diagnóstico del cerebro local Ollama")
+
+    ask = sub.add_parser("ask", help="Consulta al cerebro local sin ejecutar acciones")
+    ask.add_argument("text")
 
     tr = sub.add_parser("transcribe", help="Transcribe un archivo de audio local con whisper.cpp")
     tr.add_argument("file")
@@ -107,6 +112,16 @@ def main() -> int:
         return tts_doctor()
     if args.command == "wake-doctor":
         return wake_doctor()
+    if args.command == "brain-doctor":
+        return brain_doctor()
+    if args.command == "ask":
+        try:
+            reply = OllamaBackend().chat(args.text)
+            print(reply.text)
+            return 0
+        except (BrainError, ValueError) as exc:
+            print(f"❌ {exc}")
+            return 1
     if args.command == "wake-monitor":
         try:
             cfg = WakeWordConfig.from_env()

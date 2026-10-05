@@ -13,6 +13,7 @@ from .config import load_local_env
 from .obsidian_bridge import DEFAULT_BASE_URL, ObsidianClient, doctor as obsidian_doctor
 from .pipeline import process_audio_file, push_to_talk
 from .shell import run_shell
+from .skills import build_obsidian_registry
 from .tts import speak, tts_doctor
 from .voice import transcribe_file, voice_doctor
 from .wakeword import (
@@ -68,6 +69,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("doctor", help="Diagnóstico local + Obsidian")
     sub.add_parser("shell", help="Shell local de órdenes sin LLM")
     sub.add_parser("chat", help="Consola única: comandos locales + razonamiento Ollama")
+    sub.add_parser("skills", help="Lista skills registradas y su política")
     sub.add_parser("voice-doctor", help="Diagnóstico de whisper.cpp + modelo")
     sub.add_parser("tts-doctor", help="Diagnóstico de Piper + voz local")
     sub.add_parser("wake-doctor", help="Diagnóstico de openWakeWord + modelo Rupert")
@@ -110,6 +112,9 @@ def main() -> int:
         return run_shell(make_client())
     if args.command == "chat":
         return run_assistant_shell(make_client())
+    if args.command == "skills":
+        _show_payload(build_obsidian_registry(make_client()).describe())
+        return 0
     if args.command == "voice-doctor":
         return voice_doctor()
     if args.command == "tts-doctor":

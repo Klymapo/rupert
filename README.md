@@ -4,7 +4,7 @@
 
 GitHub stores code, reproducible configuration and tests. Secrets, recordings, model weights, Obsidian vault data and private runtime state stay on the machine.
 
-## Current milestone — v0.8
+## Current milestone — v0.9
 
 ```text
 text / voice transcript
@@ -12,19 +12,20 @@ text / voice transcript
         ↓
 deterministic parser ── unknown ──→ Ollama local (text only)
         │
-   known action
+   known intent
+        ↓
+   skill registry
         ↓
  permission kernel
    │          │
  deny       allow
               ↓
-           executor
-          │       │
-          ↓       ↓
-      Obsidian  future skills
+           handler
+              ↓
+         SkillResult
 ```
 
-The rule is simple: **reasoning is not authorization**. Every executable action passes through a centralized permission policy.
+The rule is simple: **reasoning is not authorization, and permissions are checked before a skill handler runs.**
 
 The core target is **$0/month**.
 
@@ -42,16 +43,6 @@ Edit `.env` and set your local Obsidian REST API key. Never commit it.
 .\.venv\Scripts\rupert.exe shell
 ```
 
-Example local commands:
-
-```text
-buscar Theo
-leer AlasTheo/Ideas.md
-abrir AlasTheo/Ideas.md
-añadir AlasTheo/Ideas.md :: Probar a Rupert
-salir
-```
-
 ### Unified Rupert console
 
 Once the optional Ollama brain is configured:
@@ -62,11 +53,27 @@ Once the optional Ollama brain is configured:
 
 Known commands execute deterministically. Natural-language reasoning goes to Ollama and returns text only.
 
+## Skills
+
+Obsidian is now implemented through the common skill registry:
+
+- `obsidian.search`
+- `obsidian.read`
+- `obsidian.open`
+- `obsidian.append`
+- `obsidian.overwrite`
+
+Inspect registered skills and risk metadata:
+
+```powershell
+.\.venv\Scripts\rupert.exe skills
+```
+
+Future Git/Godot/Blender capabilities will plug into this same registry instead of bypassing permissions. See `docs/SKILLS.md`.
+
 ## Permission kernel
 
 Current policy distinguishes the source of an action (`keyboard`, `voice`, `brain`, `system`) and its risk (`read`, `write`, `destructive`).
-
-Examples:
 
 - voice may search/read/open notes and append text;
 - voice may **not** overwrite an entire note;
@@ -152,6 +159,6 @@ See `docs/BRAIN.md`.
 
 Core target: **$0/month**. Paid APIs are never required by the core. Models, recordings, secrets and the Obsidian vault stay outside Git.
 
-Routine commands remain deterministic whenever possible. LLM reasoning is optional and never replaces the permission/executor layer.
+Routine commands remain deterministic whenever possible. LLM reasoning is optional and never replaces the registry/permission/executor layer.
 
-See `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/WAKEWORD.md`, `docs/BRAIN.md`, and `docs/PERMISSIONS.md`.
+See `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/WAKEWORD.md`, `docs/BRAIN.md`, `docs/PERMISSIONS.md`, and `docs/SKILLS.md`.

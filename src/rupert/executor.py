@@ -4,13 +4,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from .obsidian_bridge import ObsidianClient
-from .permissions import (
-    DEFAULT_POLICY,
-    ActionSource,
-    PermissionPolicy,
-    action_spec_for_intent,
-)
+from .permissions import DEFAULT_POLICY, ActionSource, PermissionPolicy
 from .router import Intent, IntentKind, parse_intent
+from .skills import SkillRegistry, build_obsidian_registry, skill_name_for_intent
 
 
 HELP_TEXT = """Comandos locales ($0):
@@ -39,36 +35,26 @@ def execute_intent(
     source: ActionSource = ActionSource.KEYBOARD,
     confirmed: bool = False,
     policy: PermissionPolicy = DEFAULT_POLICY,
+    registry: SkillRegistry | None = None,
 ) -> ExecutionResult:
     if intent.kind == IntentKind.EXIT:
         return ExecutionResult(True, "Hasta luego.", should_exit=True)
     if intent.kind == IntentKind.HELP:
         return ExecutionResult(True, HELP_TEXT)
 
-    spec = action_spec_for_intent(intent.kind)
-    if spec is not None:
-        decision = policy.evaluate(spec, source=source, confirmed=confirmed)
-        if not decision.allowed:
-            return ExecutionResult(False, decision.reason)
+    skill_name = skill_name_for_intent(intent.kind)
+    if skill_name is None:
+        return ExecutionResult(False, "No entendí esa orden local.")
 
-    if intent.kind == IntentKind.SEARCH:
-        payload = client.search(intent.target)
-        count = len(payload) if isinstance(payload, list) else None
-        message = f"Encontré {count} resultado{'s' if count != 1 else ''}." if count is not None else "Búsqueda terminada."
-        return ExecutionResult(True, message, payload)
-    if intent.kind == IntentKind.READ:
-        payload = client.read(intent.target)
-        return ExecutionResult(True, f"Leí {intent.target}.", payload)
-    if intent.kind == IntentKind.OPEN:
-        client.open_note(intent.target)
-        return ExecutionResult(True, f"Abrí {intent.target}.")
-    if intent.kind == IntentKind.APPEND:
-        client.append(intent.target, intent.content)
-        return ExecutionResult(True, f"Añadí el contenido a {intent.target}.")
-    if intent.kind == IntentKind.WRITE:
-        client.write(intent.target, intent.content)
-        return ExecutionResult(True, f"Escribí {intent.target}.")
-    return ExecutionResult(False, "No entendí esa orden local.")
+    active_registry = registry or build_obsidian_registry(client, policy=policy)
+    result = active_registry.invoke(
+        skill_name,
+        source=source,
+        confirmed=confirmed,
+        target=intent.target,
+        content=intent.content,
+    )
+    return ExecutionResult(result.ok, result.message, result.payload)
 
 
 def execute_text(
@@ -78,6 +64,7 @@ def execute_text(
     source: ActionSource = ActionSource.KEYBOARD,
     confirmed: bool = False,
     policy: PermissionPolicy = DEFAULT_POLICY,
+    registry: SkillRegistry | None = None,
 ) -> ExecutionResult:
     return execute_intent(
         client,
@@ -85,4 +72,5 @@ def execute_text(
         source=source,
         confirmed=confirmed,
         policy=policy,
+        registry=registry,
     )

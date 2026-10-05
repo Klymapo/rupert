@@ -4,28 +4,30 @@
 
 GitHub stores code, reproducible configuration and tests. Secrets, recordings, model weights, Obsidian vault data and private runtime state stay on the machine.
 
-## Current milestone — v0.6
+## Current milestone — v0.7
 
 ```text
-          "Rupert" / keyboard
-                  │
-        ┌─────────┴──────────┐
-        │                    │
- known local command    reasoning request
-        │                    │
-        ↓                    ↓
- deterministic router    Ollama local
-        │                (text only)
-        ↓                    │
- command executor            │
-   │          │              │
-   ↓          ↓              │
-Obsidian   Piper TTS ←───────┘
-
-Voice input: openWakeWord → microphone → whisper.cpp → same routing layer
+              text / voice transcript
+                       │
+                       ↓
+              deterministic parser
+                 │             │
+            recognized       unknown
+                 │             │
+                 ↓             ↓
+             executor      Ollama local
+            │      │        text only
+            ↓      ↓            │
+        Obsidian  skills         │
+            │                    │
+            └────────────┬───────┘
+                         ↓
+                    Rupert reply
 ```
 
-Simple commands do not use an LLM. The core target is **$0/month**.
+The rule is simple: **known commands stay deterministic; natural-language reasoning goes to the local brain.** LLM output never grants itself execution permission.
+
+The core target is **$0/month**.
 
 ## Bootstrap
 
@@ -37,12 +39,13 @@ From PowerShell in the repository root:
 
 Edit `.env` and set your local Obsidian REST API key. Never commit it.
 
+### Deterministic shell
+
 ```powershell
-.\.venv\Scripts\rupert.exe doctor
 .\.venv\Scripts\rupert.exe shell
 ```
 
-Example deterministic commands:
+Example local commands:
 
 ```text
 buscar Theo
@@ -51,6 +54,28 @@ abrir AlasTheo/Ideas.md
 añadir AlasTheo/Ideas.md :: Probar a Rupert
 salir
 ```
+
+### Unified Rupert console
+
+Once the optional Ollama brain is configured:
+
+```powershell
+.\.venv\Scripts\rupert.exe chat
+```
+
+Inside the same console:
+
+```text
+buscar Theo
+```
+
+runs locally without an LLM, while:
+
+```text
+¿Cómo mejorarías esta idea de novela?
+```
+
+uses the local brain and returns text only.
 
 ## Local speech-to-text — whisper.cpp
 
@@ -114,9 +139,7 @@ See `docs/WAKEWORD.md` for custom-model training. Wake detection is activation, 
 
 ## Optional local brain — Ollama
 
-Rupert can use Ollama for reasoning while keeping execution permissions separate.
-
-Rupert does **not** install Ollama or force a model download. Once Ollama is installed explicitly:
+Rupert does **not** install Ollama or force a model download.
 
 ```powershell
 .\scripts\setup-ollama.ps1
@@ -133,9 +156,10 @@ Set the same model in `.env`, then:
 ```powershell
 .\.venv\Scripts\rupert.exe brain-doctor
 .\.venv\Scripts\rupert.exe ask "Dame tres alternativas para esta idea"
+.\.venv\Scripts\rupert.exe chat
 ```
 
-`ask` returns text only. The local model cannot directly execute Rupert skills or claim that an action was completed.
+`ask` and the reasoning side of `chat` return text only. The local model cannot directly execute Rupert skills or claim that an action was completed.
 
 See `docs/BRAIN.md` for the permission model.
 

@@ -1,0 +1,11 @@
+{
+  "checked_on": "2026-10-05",
+  "policy": "Versions are references for reproducible local setup; runtime downloads stay outside Git.",
+  "upstreams": [
+    {"name":"obsidian-local-rest-api","repo":"coddingtonbear/obsidian-local-rest-api","ref":"5.3.1","role":"memory bridge"},
+    {"name":"whisper.cpp","repo":"ggml-org/whisper.cpp","ref":"v1.9.4","role":"speech-to-text"},
+    {"name":"piper1-gpl","repo":"OHF-Voice/piper1-gpl","ref":"v1.8.0","role":"text-to-speech"},
+    {"name":"openWakeWord","repo":"dscripka/openWakeWord","ref":"v0.6.0","role":"wake word (later)"},
+    {"name":"wyoming","repo":"OHF-Voice/wyoming","ref":"v1.10.2","role":"voice protocol (optional)"}
+  ]
+}

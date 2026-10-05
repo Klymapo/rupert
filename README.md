@@ -1,164 +1,141 @@
 # Rupert
 
-**Rupert** is Atatoriz's local-first, low-cost personal assistant hub.
+**Rupert** is Atatoriz's cloud-first, phone-first, low-cost personal assistant hub.
 
-GitHub stores code, reproducible configuration and tests. Secrets, recordings, model weights, Obsidian vault data and private runtime state stay on the machine.
+The public GitHub repository stores code, tests, workflows and static web assets. Private memory, auth state, conversations and secrets live outside the repo.
 
-## Current milestone — v0.9
+## Current milestone — v0.10 Cloud Core
 
 ```text
-text / voice transcript
-        │
-        ↓
-deterministic parser ── unknown ──→ Ollama local (text only)
-        │
-   known intent
-        ↓
-   skill registry
-        ↓
- permission kernel
-   │          │
- deny       allow
-              ↓
-           handler
-              ↓
-         SkillResult
+📱 Phone / PWA on GitHub Pages
+          │
+          │ Supabase Auth JWT
+          ▼
+☁️ Supabase Edge Functions
+     │              │
+     │              └── Cloudflare Workers AI
+     │                  ├─ reasoning
+     │                  └─ Whisper ASR
+     │
+     ├── Postgres + RLS
+     ├── private Storage
+     └── audit trail
 ```
 
-The rule is simple: **reasoning is not authorization, and permissions are checked before a skill handler runs.**
+A laptop is **not required** for normal Rupert use. It becomes an optional worker only for future machine-specific jobs such as Blender, Godot, local GPU inference or access to files that exist only on that computer.
 
-The core target is **$0/month**.
+## Phone app / PWA
 
-## Bootstrap
+The mobile UI lives in `web/` and is deployed through GitHub Pages.
 
-```powershell
-.\scripts\bootstrap.ps1
+It provides:
+
+- mobile chat;
+- authenticated access;
+- push-to-talk recording while the PWA is open;
+- deterministic memory commands;
+- cloud reasoning when configured;
+- installable PWA behavior.
+
+The app is configured from the phone with a Supabase project URL and publishable/anon key. Never paste a service-role key or Cloudflare token into the PWA.
+
+## Private cloud memory
+
+Supabase migration:
+
+```text
+supabase/migrations/20261005_001_rupert_cloud_core.sql
 ```
 
-Edit `.env` and set your local Obsidian REST API key. Never commit it.
+Private tables:
 
-### Deterministic shell
+- `rupert_memory`
+- `rupert_messages`
+- `rupert_settings`
+- `rupert_audit`
 
-```powershell
-.\.venv\Scripts\rupert.exe shell
+All are protected with Row Level Security. The private `rupert-private` Storage bucket is user-scoped as well.
+
+## Deterministic commands — no LLM required
+
+The cloud router currently recognizes:
+
+```text
+buscar <texto>
+leer <título>
+añadir <título> :: <contenido>
 ```
 
-### Unified Rupert console
+These execute against private Supabase memory without invoking an LLM.
 
-Once the optional Ollama brain is configured:
+Unknown natural language may go to the cloud reasoning backend, but that path is **text-only** and has no action execution channel.
 
-```powershell
-.\.venv\Scripts\rupert.exe chat
+## Voice
+
+The PWA microphone records only while the app is in the foreground.
+
+```text
+microphone → authenticated Edge Function → Cloudflare Whisper → transcript → Rupert router
 ```
 
-Known commands execute deterministically. Natural-language reasoning goes to Ollama and returns text only.
+Audio is not stored by default.
 
-## Skills
+A permanent background wake word is intentionally not part of the web MVP because mobile operating systems can suspend browser/PWA microphone activity. A tiny native phone companion can be added later if always-listening activation becomes important.
 
-Obsidian is now implemented through the common skill registry:
+## Cloud backend
 
-- `obsidian.search`
-- `obsidian.read`
-- `obsidian.open`
-- `obsidian.append`
-- `obsidian.overwrite`
+Supabase Edge Functions:
 
-Inspect registered skills and risk metadata:
+- `rupert` — deterministic routing + safe reasoning adapter
+- `rupert-transcribe` — authenticated ASR proxy
 
-```powershell
-.\.venv\Scripts\rupert.exe skills
+Expected backend-only secrets for optional Cloudflare Workers AI:
+
+```text
+CF_ACCOUNT_ID
+CF_API_TOKEN
+CF_TEXT_MODEL=@cf/meta/llama-3.1-8b-instruct
+CF_ASR_MODEL=@cf/openai/whisper-large-v3-turbo
 ```
 
-Future Git/Godot/Blender capabilities will plug into this same registry instead of bypassing permissions. See `docs/SKILLS.md`.
+These secrets must never reach GitHub Pages.
 
-## Permission kernel
+## GitHub Pages
 
-Current policy distinguishes the source of an action (`keyboard`, `voice`, `brain`, `system`) and its risk (`read`, `write`, `destructive`).
+`.github/workflows/pages.yml` deploys `web/` from `main`.
 
-- voice may search/read/open notes and append text;
-- voice may **not** overwrite an entire note;
-- an LLM may propose actions but may **not** execute them;
-- destructive future actions require explicit confirmation.
+If Pages is not already enabled, use repository **Settings → Pages → Source: GitHub Actions** once. No laptop is required.
 
-See `docs/PERMISSIONS.md`.
+## Legacy / optional local node
 
-## Local speech-to-text — whisper.cpp
+The previous local components remain available and can later become an optional desktop worker:
 
-```powershell
-.\scripts\setup-whisper.ps1
-```
+- Obsidian bridge
+- whisper.cpp
+- Piper
+- openWakeWord
+- Ollama
+- permission kernel
+- skill registry
 
-Optional NVIDIA CUDA build:
+Nothing forces the phone/cloud path to depend on them.
 
-```powershell
-.\scripts\setup-whisper.ps1 -Cuda
-```
+## Security
 
-```powershell
-.\.venv\Scripts\rupert.exe voice-doctor
-.\.venv\Scripts\rupert.exe transcribe .\sample.wav -l es
-```
+The central rules remain:
 
-## Local text-to-speech — Piper
+- reasoning is not authorization;
+- unknown text never receives an execution channel;
+- private state never belongs in the public repository;
+- client-side credentials are limited to publishable Supabase credentials;
+- user data is protected by Auth + RLS;
+- provider secrets stay server-side;
+- destructive actions are absent from the v0.10 cloud MVP.
 
-```powershell
-.\scripts\setup-piper.ps1
-.\.venv\Scripts\rupert.exe tts-doctor
-.\.venv\Scripts\rupert.exe speak "Rupert está en línea."
-```
+## Cost policy
 
-Default voice: Mexican Spanish (`es_MX-ald-medium`).
+Target: **as close to $0/month as practical**.
 
-## Push-to-talk
+GitHub public repo + Pages/Actions handle the public code/UI/CI. Supabase handles private state/auth. Cloudflare Workers AI is optional and only used when reasoning or transcription actually needs it.
 
-```powershell
-.\.venv\Scripts\rupert.exe talk
-.\.venv\Scripts\rupert.exe talk --speak
-```
-
-## Local wake word — openWakeWord
-
-```powershell
-.\scripts\setup-wakeword.ps1
-```
-
-The final activation phrase is **Rupert**, using a custom ONNX model stored outside Git at `.runtime/models/wakeword/rupert.onnx`.
-
-```powershell
-.\.venv\Scripts\rupert.exe wake-doctor
-.\.venv\Scripts\rupert.exe wake-monitor
-```
-
-See `docs/WAKEWORD.md`. Wake detection is activation, not authorization.
-
-## Optional local brain — Ollama
-
-Rupert does **not** install Ollama or force a model download.
-
-```powershell
-.\scripts\setup-ollama.ps1
-```
-
-After choosing a model:
-
-```powershell
-.\scripts\setup-ollama.ps1 -Model <model-name>
-```
-
-Set the same model in `.env`, then:
-
-```powershell
-.\.venv\Scripts\rupert.exe brain-doctor
-.\.venv\Scripts\rupert.exe ask "Dame tres alternativas para esta idea"
-.\.venv\Scripts\rupert.exe chat
-```
-
-See `docs/BRAIN.md`.
-
-## Cost / privacy policy
-
-Core target: **$0/month**. Paid APIs are never required by the core. Models, recordings, secrets and the Obsidian vault stay outside Git.
-
-Routine commands remain deterministic whenever possible. LLM reasoning is optional and never replaces the registry/permission/executor layer.
-
-See `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/WAKEWORD.md`, `docs/BRAIN.md`, `docs/PERMISSIONS.md`, and `docs/SKILLS.md`.
+See `docs/CLOUD.md`, `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/PERMISSIONS.md` and `docs/SKILLS.md`.

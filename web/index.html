@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <meta name="description" content="Rupert — asistente personal cloud-first" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="stylesheet" href="./styles.css" />
+  <title>Rupert</title>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">RUPERT CLOUD</div>
+        <h1>Rupert</h1>
+      </div>
+      <button id="settingsBtn" class="icon-btn" aria-label="Configuración">⚙️</button>
+    </header>
+
+    <section id="statusCard" class="status-card">
+      <span id="statusDot" class="dot"></span>
+      <span id="statusText">Sin configurar</span>
+    </section>
+
+    <section id="authView" class="panel hidden">
+      <h2>Acceso</h2>
+      <p>Recibe un enlace de acceso en tu correo. Después podremos activar passkeys/biometría desde Supabase.</p>
+      <label>Correo
+        <input id="emailInput" type="email" autocomplete="email" placeholder="tu@correo.com" />
+      </label>
+      <button id="loginBtn" class="primary">Enviar enlace de acceso</button>
+      <p id="authMessage" class="muted"></p>
+    </section>
+
+    <section id="chatView" class="chat hidden">
+      <div id="messages" class="messages" aria-live="polite"></div>
+      <div class="composer">
+        <button id="micBtn" class="mic" aria-label="Hablar">🎙️</button>
+        <textarea id="promptInput" rows="1" placeholder="Habla o escribe a Rupert…"></textarea>
+        <button id="sendBtn" class="send" aria-label="Enviar">➤</button>
+      </div>
+      <div class="quick-actions">
+        <button data-prompt="buscar Theo">Buscar Theo</button>
+        <button data-prompt="¿Qué recuerdas de mis proyectos actuales?">Mis proyectos</button>
+        <button data-prompt="¿Qué debería priorizar hoy?">Prioridades</button>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="settingsDialog">
+    <form method="dialog" class="settings-form">
+      <h2>Conectar Rupert</h2>
+      <p class="muted">La URL y la publishable key son credenciales públicas de cliente. Nunca pegues aquí service-role keys ni tokens de Cloudflare.</p>
+      <label>Supabase URL
+        <input id="supabaseUrl" placeholder="https://xxxxx.supabase.co" inputmode="url" />
+      </label>
+      <label>Publishable / anon key
+        <textarea id="supabaseKey" rows="4" placeholder="sb_publishable_… o anon JWT"></textarea>
+      </label>
+      <div class="dialog-actions">
+        <button value="cancel">Cancelar</button>
+        <button id="saveConfigBtn" value="default" class="primary">Guardar</button>
+      </div>
+      <button id="logoutBtn" type="button" class="danger hidden">Cerrar sesión</button>
+      <button id="clearConfigBtn" type="button" class="subtle">Olvidar configuración local</button>
+    </form>
+  </dialog>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

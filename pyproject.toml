@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rupert"
-version = "0.9.0"
-description = "Local-first, low-cost personal assistant hub"
+version = "0.10.0"
+description = "Cloud-first, phone-first, low-cost personal assistant hub"
 readme = "README.md"
 requires-python = ">=3.12"
 license = {text = "MIT"}

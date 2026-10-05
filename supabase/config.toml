@@ -1,0 +1,7 @@
+project_id = "rupert"
+
+[functions.rupert]
+verify_jwt = true
+
+[functions.rupert-transcribe]
+verify_jwt = true

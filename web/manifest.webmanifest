@@ -1,0 +1,13 @@
+{
+  "name": "Rupert",
+  "short_name": "Rupert",
+  "description": "Asistente personal cloud-first, phone-first y low-cost",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b1120",
+  "theme_color": "#111827",
+  "lang": "es-MX",
+  "orientation": "portrait-primary",
+  "icons": []
+}
